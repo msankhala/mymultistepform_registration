@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function mymultistepform_registration_menu(){
+  $items = array();
+
+  $items['user/register/%'] = array(
+    'title' => 'Create new account',
+    'page callback' => 'mymultistepform_registration_ctools_wizard',
+    'page arguments' => array(2),
+    'access callback' => 'mymultistepform_registration_access',
+    'access arguments' => array(2),
+    'file' => 'mymultistepform_registration_ctools_wizard.inc',
+    'type' => MENU_CALLBACK,
+    );
+
+  return $items;
+}
+
+function mymultistepform_registration_access() {
+  return variable_get('user_register', 1);
+}
+
+
+/**
+* Implements hook_menu_alter().
+*/
+function mymultistepform_registration_menu_alter(&$items) {
+  // Ctools registration wizard for standard registration.
+  // Overrides default router item defined by core user module.
+  $items['user/register']['page callback'] = array('mymultistepform_registration_ctools_wizard');
+  // Pass the "first" step key to start the form on step 1 if no step has been specified.
+  $items['user/register']['page arguments'] = array('register');
+  $items['user/register']['file path'] = drupal_get_path('module', 'mymultistepform_registration');
+  $items['user/register']['file'] = 'mymultistepform_registration_ctools_wizard.inc';
+  return $items;
+}
+
+/**
+* Implements hook_form_FORM_ID_alter().
+*/
+function mymultistepform_registration_form_user_register_form_alter(&$form, &$form_state) {
+  ctools_include('wizard');
+  $form['#submit'] = array(
+    'user_register_submit',
+    'ctools_wizard_submit',
+  );
+}
+
+/**
+* Implements hook_block_info().
+*/
+function mymultistepform_registration_block_info() {
+  $blocks['register_step1'] = array(
+    'info' => t('mymultistepform Registration: Step 1'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+
+  return $blocks;
+}
+
+/**
+* Implements hook_block_view().
+*
+* This hook generates the contents of the blocks themselves.
+*/
+function mymultistepform_registration_block_view($delta = '') {
+  switch ($delta) {
+    case 'register_step1':
+      $block['subject'] = 'Create an Account';
+      $block['content'] = mymultistepform_registration_block_contents($delta);
+      break;
+  }
+  return $block;
+}
+
+/**
+* A module-defined block content function.
+*/
+function mymultistepform_registration_block_contents($which_block) {
+  global $user;
+  $content = '';
+  switch ($which_block) {
+    case 'register_step1':
+      if (!$user->uid) {
+        module_load_include('inc', 'mymultistepform_registration', 'mymultistepform_registration_ctools_wizard');
+        return mymultistepform_registration_ctools_wizard('register');
+      }
+      break;
+  }
+}
